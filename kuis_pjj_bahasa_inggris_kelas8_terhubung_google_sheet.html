@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kuis PJJ Bahasa Inggris - Kelas 8</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#eef5ff,#f8fbff);color:#172033}
+.container{max-width:850px;margin:0 auto;padding:20px}
+.card{background:#fff;border-radius:20px;padding:26px;box-shadow:0 8px 30px rgba(30,60,100,.10);margin-top:20px}
+h1{margin:0 0 8px;font-size:28px}h2{margin-top:0}.subtitle{color:#63708a;margin-bottom:20px}
+input[type=text]{width:100%;padding:14px;border:1px solid #ccd5e2;border-radius:10px;font-size:16px}
+button{border:0;border-radius:10px;padding:13px 20px;font-size:16px;font-weight:700;cursor:pointer}
+.primary{background:#2563eb;color:white}.secondary{background:#e8eef8;color:#1e3a5f}.danger{background:#dc2626;color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}.hidden{display:none!important}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap}
+.timer{font-size:22px;font-weight:800;background:#fff3cd;color:#8a5a00;padding:10px 15px;border-radius:12px}
+.timer.warning{background:#fee2e2;color:#b91c1c}
+.progress{height:9px;background:#e5eaf2;border-radius:20px;overflow:hidden;margin:15px 0 22px}.progress div{height:100%;background:#2563eb;width:0;transition:.25s}
+.question-number{font-size:14px;color:#65728a}.question{font-size:20px;font-weight:700;line-height:1.5;margin:8px 0 20px}
+.options{display:grid;gap:12px}.option{display:flex;align-items:flex-start;gap:12px;border:1px solid #d6deea;padding:14px;border-radius:12px;cursor:pointer;transition:.15s}.option:hover{border-color:#2563eb;background:#f5f8ff}.option input{margin-top:4px;accent-color:#2563eb}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:24px}
+.result{text-align:center}.score{font-size:60px;font-weight:900;color:#2563eb}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}.stat{background:#f5f7fb;padding:15px;border-radius:12px}.stat b{display:block;font-size:25px;margin-top:5px}
+.small{font-size:13px;color:#6b7280;line-height:1.6}.error{color:#b91c1c;font-weight:600}
+@media(max-width:600px){.container{padding:12px}.card{padding:18px}.stats{grid-template-columns:1fr}.question{font-size:18px}.nav button{flex:1}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div id="startPage" class="card">
+  <h1>🦁 Kuis PJJ Bahasa Inggris</h1>
+  <div class="subtitle"><b>Kelas VIII SMP</b> · Materi: <b>Words Related to Animal</b></div>
+  <p>20 soal pilihan ganda · Waktu 30 menit · Nilai otomatis</p>
+  <label><b>Nama Siswa</b></label>
+  <input id="studentName" type="text" placeholder="Masukkan nama lengkap" maxlength="80">
+  <button class="primary" style="width:100%;margin-top:16px" onclick="startQuiz()">Mulai Kuis</button>
+  <p class="small">Petunjuk: pilih satu jawaban yang paling tepat. Setiap jawaban benar bernilai 5 poin. Kuis dapat dikerjakan melalui HP atau komputer dan menggunakan teks sederhana agar hemat kuota.</p>
+</div>
+
+<div id="quizPage" class="hidden">
+  <div class="card">
+    <div class="topbar">
+      <div><b>Words Related to Animal</b><div class="small" id="studentLabel"></div></div>
+      <div id="timer" class="timer">30:00</div>
+    </div>
+    <div class="progress"><div id="progressBar"></div></div>
+    <div class="question-number" id="questionNumber"></div>
+    <div class="question" id="questionText"></div>
+    <div class="options" id="options"></div>
+    <div class="nav">
+      <button id="prevBtn" class="secondary" onclick="previousQuestion()">← Sebelumnya</button>
+      <button id="nextBtn" class="primary" onclick="nextQuestion()">Berikutnya →</button>
+    </div>
+  </div>
+</div>
+
+<div id="resultPage" class="card result hidden">
+  <h2>🎉 Kuis Selesai</h2>
+  <p id="resultName"></p>
+  <div class="score" id="score">0</div>
+  <div id="criterion"></div>
+  <div class="stats">
+    <div class="stat">Benar<b id="correct">0</b></div>
+    <div class="stat">Salah<b id="wrong">0</b></div>
+    <div class="stat">Nilai<b id="finalScore">0</b></div>
+  </div>
+  <p id="submitStatus" class="small"></p>
+  <button class="primary" onclick="location.reload()">Ulangi Kuis</button>
+</div>
+
+</div>
+
+<script>
+/*
+==========================================================
+PENGATURAN PENYIMPANAN HASIL
+==========================================================
+Agar guru dapat menerima hasil siswa secara online:
+1. Buat Google Sheet.
+2. Buat Google Apps Script sebagai Web App.
+3. Salin URL Web App ke variabel GOOGLE_APPS_SCRIPT_URL di bawah.
+4. Jika URL dikosongkan, kuis tetap berjalan tetapi hasil hanya
+   ditampilkan kepada siswa dan tidak dikirim ke Google Sheet.
+==========================================================
+*/
+const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyabN89nt4U0LR_2MYyt2KVrFG7kT2AKCilKulPQzSJMpc51hi_MJlXxlIUx9pFzO7AXA/exec";
+
+const questions = [
+ {q:"A bird uses its ______ to fly.", o:["claws","wings","horns","paws"], a:1, c:"Animal Body Parts"},
+ {q:"An elephant has a long ______.", o:["beak","tail","trunk","fin"], a:2, c:"Animal Body Parts"},
+ {q:"Which animal has a shell?", o:["Tiger","Eagle","Turtle","Horse"], a:2, c:"Animal Body Parts"},
+ {q:"A cow has ______ on its head.", o:["horns","whiskers","feathers","scales"], a:0, c:"Animal Body Parts"},
+ {q:"Which animal has scales?", o:["Fish","Rabbit","Dog","Eagle"], a:0, c:"Animal Body Parts"},
+ {q:"A cat has ______ around its mouth.", o:["tusks","whiskers","hooves","fins"], a:1, c:"Animal Body Parts"},
+ {q:"An eagle has sharp ______ to catch its prey.", o:["paws","feathers","claws","shells"], a:2, c:"Animal Body Parts"},
+ {q:"A dog belongs to the group of ______.", o:["reptiles","mammals","insects","amphibians"], a:1, c:"Animal Groups"},
+ {q:"Which animal is a reptile?", o:["Frog","Eagle","Snake","Butterfly"], a:2, c:"Animal Groups"},
+ {q:"A frog belongs to the group of ______.", o:["amphibians","mammals","birds","insects"], a:0, c:"Animal Groups"},
+ {q:"Which animal belongs to the insect group?", o:["Whale","Ant","Crocodile","Pigeon"], a:1, c:"Animal Groups"},
+ {q:"Which of the following is a wild animal habitat?", o:["House","Cage","Forest","Farm"], a:2, c:"Habitats"},
+ {q:"A fish commonly lives in an ______.", o:["aquarium","cage","house","forest"], a:0, c:"Habitats"},
+ {q:"Lions ______ loudly.", o:["bark","purr","roar","graze"], a:2, c:"Animal Behaviors"},
+ {q:"Dogs ______ when they see strangers.", o:["bark","roar","slither","fly"], a:0, c:"Animal Behaviors"},
+ {q:"My cat ______ when I pet its head.", o:["hunts","purrs","grazes","roars"], a:1, c:"Animal Behaviors"},
+ {q:"A snake ______ through the grass.", o:["flies","barks","grazes","slithers"], a:3, c:"Animal Behaviors"},
+ {q:"Eagles can ______ high in the sky.", o:["fly","bark","purr","graze"], a:0, c:"Animal Behaviors"},
+ {q:"Cows ______ in the field every morning.", o:["hunt","roar","graze","slither"], a:2, c:"Animal Behaviors"},
+ {q:"Eagles ______ small mammals for food.", o:["purr","hunt","bark","graze"], a:1, c:"Animal Behaviors"}
+];
+
+let current=0, answers=Array(questions.length).fill(null), seconds=1800, timer=null, studentName="";
+
+function startQuiz(){
+  studentName=document.getElementById("studentName").value.trim();
+  if(!studentName){alert("Silakan masukkan nama lengkap terlebih dahulu.");return;}
+  document.getElementById("startPage").classList.add("hidden");
+  document.getElementById("quizPage").classList.remove("hidden");
+  document.getElementById("studentLabel").textContent="Siswa: "+studentName;
+  current=0; answers=Array(questions.length).fill(null); seconds=1800;
+  renderQuestion();
+  timer=setInterval(tick,1000);
+}
+function tick(){
+  seconds--;
+  if(seconds<0) seconds=0;
+  updateTimer();
+  if(seconds===0){clearInterval(timer);finishQuiz(true);}
+}
+function updateTimer(){
+  const m=Math.floor(seconds/60), s=seconds%60;
+  const el=document.getElementById("timer");
+  el.textContent=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  el.classList.toggle("warning",seconds<=300);
+}
+function renderQuestion(){
+  const item=questions[current];
+  document.getElementById("questionNumber").textContent=`Soal ${current+1} dari ${questions.length} · ${item.c}`;
+  document.getElementById("questionText").textContent=item.q;
+  document.getElementById("progressBar").style.width=((current+1)/questions.length*100)+"%";
+  const box=document.getElementById("options");
+  box.innerHTML="";
+  item.o.forEach((text,i)=>{
+    const label=document.createElement("label");
+    label.className="option";
+    label.innerHTML=`<input type="radio" name="answer" value="${i}"><span>${String.fromCharCode(65+i)}. ${text}</span>`;
+    const input=label.querySelector("input");
+    input.checked=answers[current]===i;
+    input.addEventListener("change",()=>answers[current]=i);
+    box.appendChild(label);
+  });
+  document.getElementById("prevBtn").disabled=current===0;
+  document.getElementById("nextBtn").textContent=current===questions.length-1?"Kirim Jawaban":"Berikutnya →";
+  updateTimer();
+}
+function previousQuestion(){
+  if(current>0){current--;renderQuestion();}
+}
+function nextQuestion(){
+  if(current<questions.length-1){current++;renderQuestion();}
+  else{
+    if(confirm("Apakah Anda yakin ingin mengirim jawaban?")) finishQuiz(false);
+  }
+}
+function finishQuiz(auto){
+  clearInterval(timer);
+  let correct=0;
+  questions.forEach((x,i)=>{if(answers[i]===x.a)correct++;});
+  const score=correct*5;
+  const wrong=20-correct;
+  document.getElementById("quizPage").classList.add("hidden");
+  document.getElementById("resultPage").classList.remove("hidden");
+  document.getElementById("resultName").textContent="Nama: "+studentName+(auto?" · Waktu habis":"");
+  document.getElementById("score").textContent=score+"/100";
+  document.getElementById("correct").textContent=correct;
+  document.getElementById("wrong").textContent=wrong;
+  document.getElementById("finalScore").textContent=score;
+  document.getElementById("criterion").textContent=
+    score>=90?"Sangat Baik":score>=80?"Baik":score>=70?"Cukup":"Perlu Bimbingan";
+  sendResult(correct,score,auto);
+}
+function sendResult(correct,score,auto){
+  const status=document.getElementById("submitStatus");
+  if(!GOOGLE_APPS_SCRIPT_URL){
+    status.innerHTML='<span class="error">Hasil belum dikirim ke server.</span><br>Untuk mengaktifkan rekap guru, isi GOOGLE_APPS_SCRIPT_URL pada kode HTML.';
+    return;
+  }
+  status.textContent="Mengirim hasil ke guru...";
+  const payload={
+    timestamp:new Date().toISOString(),
+    nama:studentName,
+    benar:correct,
+    salah:20-correct,
+    skor:score,
+    kriteria:score>=90?"Sangat Baik":score>=80?"Baik":score>=70?"Cukup":"Perlu Bimbingan",
+    status:auto?"Waktu habis":"Selesai",
+    jawaban:answers.map((v,i)=>v===null?"":questions[i].o[v]||"")
+  };
+  fetch(GOOGLE_APPS_SCRIPT_URL,{
+    method:"POST",
+    mode:"no-cors",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify(payload)
+  }).then(()=>{
+    status.textContent="Hasil telah dikirim. Guru dapat melihat rekap pada Google Sheet.";
+  }).catch(()=>{
+    status.innerHTML='<span class="error">Pengiriman hasil gagal. Periksa koneksi internet atau URL server.</span>';
+  });
+}
+</script>
+</body>
+</html>
